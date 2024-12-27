@@ -1,0 +1,218 @@
+-- Load Orion Library
+local success, OrionLib = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+end)
+
+if not success then
+    warn("Failed to load Orion Library: " .. tostring(OrionLib))
+    return
+end
+
+-- Load Aimbot Script
+local aimbotLoaded, aimbotError = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Exunys/Aimbot-V2/main/Resources/Scripts/Raw%20Main.lua"))()
+end)
+
+if not aimbotLoaded then
+    warn("Failed to load Aimbot script: " .. tostring(aimbotError))
+    return
+end
+
+-- Get Aimbot Globals (if aimbot script defines global variables)
+local Aimbot = getgenv().Aimbot
+local Settings = Aimbot and Aimbot.Settings
+
+-- Orion GUI Window
+local Window = OrionLib:MakeWindow({
+    Name = "Universal Aimbot",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "AimbotConfig"
+})
+
+-- Aimbot Tab
+local AimbotTab = Window:MakeTab({
+    Name = "Aimbot",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- Aimbot Toggle
+AimbotTab:AddToggle({
+    Name = "Enable Aimbot",
+    Default = false,
+    Callback = function(state)
+        if Settings then
+            Settings.Enabled = state
+            print("Aimbot Enabled:", state)
+        else
+            warn("Aimbot Settings not loaded.")
+        end
+    end
+})
+
+-- Sensitivity Slider (for legit aimbot settings)
+AimbotTab:AddSlider({
+    Name = "Aimbot Sensitivity",
+    Min = 0,
+    Max = 1,
+    Default = 0.3,  -- Default value for more natural aim
+    Decimals = 3,   -- More decimal places for more fine control
+    Increment = 0.01,  -- Smaller increments for finer adjustments
+    Callback = function(value)
+        if Settings then
+            -- Adjusting the sensitivity and scaling for smoother control
+            Settings.Sensitivity = value
+            print("Sensitivity set to:", value)
+        else
+            warn("Aimbot Settings not loaded.")
+        end
+    end
+})
+
+-- ESP Tab (Universal ESP)
+local EspTab = Window:MakeTab({
+    Name = "ESP",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- ESP Logic (using Highlight)
+getgenv().esp = false
+getgenv().Color = Color3.fromRGB(255, 0, 0)
+
+EspTab:AddToggle({
+    Name = "ESP",
+    Default = false,
+    Callback = function(Value)
+        getgenv().esp = Value
+        spawn(function()
+            while wait() do
+                if not getgenv().esp then
+                    for i, v in pairs(game.Players:GetChildren()) do
+                        if v.Character and v.Character:FindFirstChild("Highlight") then
+                            local Highlight = v.Character:FindFirstChild("Highlight")
+                            Highlight.Enabled = false
+                        end
+                    end
+                else
+                    for i, v in pairs(game.Players:GetChildren()) do
+                        if v.Character and v ~= game.Players.LocalPlayer then
+                            if v.Character:FindFirstChild("Highlight") then
+                                local Highlight = v.Character:FindFirstChild("Highlight")
+                                Highlight.Enabled = true
+                                Highlight.FillColor = getgenv().Color
+                                Highlight.Adornee = v.Character
+                            else
+                                local Highlight = Instance.new("Highlight", v.Character)
+                                Highlight.Enabled = true
+                                Highlight.FillColor = getgenv().Color
+                                Highlight.Adornee = v.Character
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+})
+
+EspTab:AddColorpicker({
+    Name = "ESP Color",
+    Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(Value)
+        getgenv().Color = Value
+    end
+})
+
+EspTab:AddToggle({
+    Name = "Rainbow ESP",
+    Default = false,
+    Callback = function(Value)
+        getgenv().Rainbow = Value
+        while wait() do
+            if not getgenv().Rainbow then return end
+            getgenv().Color = Color3.new(148, 0, 211)
+            wait()
+            getgenv().Color = Color3.new(75, 0, 130)
+            wait()
+            getgenv().Color = Color3.new(0, 0, 255)
+            wait()
+            getgenv().Color = Color3.new(0, 255, 0)
+            wait()
+            getgenv().Color = Color3.new(255, 255, 0)
+            wait()
+            getgenv().Color = Color3.new(255, 127, 0)
+            wait()
+            getgenv().Color = Color3.new(255, 0, 0)
+            wait()
+        end
+    end
+})
+
+-- Name Tag ESP Script
+local lplr = game.Players.LocalPlayer
+local camera = game:GetService("Workspace").CurrentCamera
+local CurrentCamera = workspace.CurrentCamera
+local worldToViewportPoint = CurrentCamera.worldToViewportPoint
+
+getgenv().nameTagEsp = true -- Global toggle for name tag ESP
+
+local function createNameEsp(v)
+    local Esp = Drawing.new("Text")
+    Esp.Visible = false
+    Esp.Color = Color3.new(1, 1, 1)
+    Esp.Size = 9
+    Esp.Center = true
+    Esp.Outline = true
+    Esp.OutlineColor = Color3.new(0, 0, 0)
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if v.Character and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("HumanoidRootPart") and v ~= lplr and v.Character.Humanoid.Health > 0 then
+            local RootPart = v.Character.HumanoidRootPart
+            local RootPosition, onScreen = worldToViewportPoint(CurrentCamera, RootPart.Position)
+
+            local distance = math.floor((RootPart.Position - lplr.Character.HumanoidRootPart.Position).Magnitude)
+
+            local health = v.Character.Humanoid.Health
+            local maxHealth = v.Character.Humanoid.MaxHealth
+            local healthPercentage = math.floor((health / maxHealth) * 100)
+
+            Esp.Position = Vector2.new(RootPosition.X, RootPosition.Y - 20)
+            Esp.Text = tostring(distance) .. " | " .. v.Name .. " | " .. tostring(healthPercentage) .. "%"
+            Esp.Visible = onScreen
+        else
+            Esp.Visible = false
+        end
+    end)
+end
+
+-- Initialize NameTag ESP for existing players
+for i, v in pairs(game.Players:GetChildren()) do
+    createNameEsp(v)
+end
+
+-- Listen for new players joining
+game.Players.PlayerAdded:Connect(function(v)
+    createNameEsp(v)
+end)
+
+-- Panic Key (Turns everything off)
+local panicKey = Enum.KeyCode.F3 -- Panic key set to F3
+ -- Panic key set to F3
+ -- You can change this to any key you'd like
+local function panicMode()
+    getgenv().esp = false
+    getgenv().nameTagEsp = false
+    Settings.Enabled = false
+    print("Panic mode activated: All features are turned off.")
+end
+
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == panicKey then
+        panicMode()
+    end
+end)
+
+-- Initialize Orion GUI
+OrionLib:Init()
